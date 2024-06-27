@@ -16,19 +16,14 @@ package com.aggeplugins.lib;
 import com.aggeplugins.lib.*;
 import com.aggeplugins.lib.export.*;
 
-import com.piggyplugins.PiggyUtils.API.PlayerUtil;
+import com.piggyplugins.PiggyUtils.API.*;
+import com.piggyplugins.PiggyUtils.*;
 import com.example.Packets.*;
-import com.example.EthanApiPlugin.Collections.ETileItem;
-import com.example.EthanApiPlugin.Collections.Inventory;
-import com.example.EthanApiPlugin.Collections.NPCs;
-import com.example.EthanApiPlugin.Collections.TileItems;
-import com.example.EthanApiPlugin.Collections.query.TileItemQuery;
-import com.example.EthanApiPlugin.EthanApiPlugin;
-import com.example.InteractionApi.InventoryInteraction;
-import com.example.EthanApiPlugin.Collections.Widgets;
-import com.example.InteractionApi.NPCInteraction;
-import com.example.InteractionApi.ShopInteraction;
-import com.example.PacketUtils.WidgetInfoExtended;
+import com.example.EthanApiPlugin.*;
+import com.example.InteractionApi.*;
+import com.example.PacketUtils.*;
+import com.example.EthanApiPlugin.Collections.*;
+import com.example.EthanApiPlugin.Collections.query.*;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -45,6 +40,7 @@ import java.util.List;
 import java.util.Optional;
 import java.awt.event.KeyEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Random;
 
 @Slf4j
 public class Action {
@@ -207,6 +203,49 @@ public class Action {
         }
         return false;
     }   
+
+    public static void checkRunEnergy(Client client) 
+    {
+        Random rand = new Random();
+        if (client.getVarpValue(173) == 0 && 
+            client.getEnergy() >= rand.nextInt(50) * 100) { // random 0-50
+            MousePackets.queueClickPacket();
+            WidgetPackets.queueWidgetActionPacket(1, 10485787, -1, -1);
+        }
+    }
+
+    public static boolean isInteractingNPC(Client client)
+    {
+        return client.getLocalPlayer().isInteracting() && 
+               client.getLocalPlayer().getInteracting() != null;
+    }
+
+    public static boolean isInteractingTO(Client client)
+    {
+        return EthanApiPlugin.isMoving() ||
+               client.getLocalPlayer().getAnimation() != -1;
+    }
+    
+    public static boolean isInteractingTO(Client client, WorldPoint wp)
+    {
+        return wp.getPlane() == client.getLocalPlayer()
+                                      .getWorldLocation()
+                                      .getPlane();
+    }
+
+    public static boolean isInteractingTI(int id)
+    {
+        return Inventory.search().withId(id).onlyUnnoted().empty() &&
+               !TileItems.search().withId(id).withinDistance(10).empty();
+    }
+    
+    public static boolean isInteractingTI(String name)
+    {
+        return Inventory.search().nameContains(name).onlyUnnoted()
+                                                    .empty() &&
+               !TileItems.search().nameContains(name).withinDistance(10)
+                                                     .empty();
+    }
 
     //public static void setMax(int max)
     //{
