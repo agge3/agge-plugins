@@ -15,6 +15,7 @@ package com.aggeplugins.Fighter;
 
 import com.aggeplugins.Fighter.*;
 import com.aggeplugins.lib.*;
+import com.aggeplugins.MessageBus.*;
 import com.aggeplugins.lib.export.TaskManager.*;
 
 import com.example.EthanApiPlugin.EthanApiPlugin;
@@ -41,6 +42,7 @@ import static net.runelite.api.TileItem.OWNERSHIP_SELF;
 import static net.runelite.api.TileItem.OWNERSHIP_GROUP;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.Skill;
 
 import org.apache.commons.lang3.tuple.Pair;
 import java.util.*;
@@ -79,6 +81,11 @@ public class FighterPlugin extends Plugin {
     public int idleTicks = 0;
     public LocalPoint npcTile;
     public LocalPoint lootTile;
+    public String currState;
+
+    private MessageBus messageBus;
+    private Message<MessageID, ?> msg;
+    private Pair<Skill, Integer> pair;
 
     /**
      * Flag to prevent finding another NPC if we're already locked on to one.
@@ -120,7 +127,10 @@ public class FighterPlugin extends Plugin {
 
     private void init()
     {
-        tickDelay = config.tickDelay();
+        tickDelay = RandomUtil.randTicks();
+        //tickDelay = config.tickDelay();
+        currState = "";
+        messageBus = messageBus.instance();
         addTasks();
     }
 
@@ -151,6 +161,7 @@ public class FighterPlugin extends Plugin {
     {
         lootQueue.clear();
         taskManager.clearTasks();
+        tickDelay = 0;
     }
 
     @Subscribe
@@ -165,21 +176,43 @@ public class FighterPlugin extends Plugin {
             idleTicks = 0;
         }
 
+        //log.info("Game tick observed. Queue size before any operation: {}", lootQueue.size());
+
+        // If there's instructions, let AccountBuilder control -- skip to entry
+        // if there's not.
+        if (messageBus.query(MessageID.INSTRUCTIONS)) {
+            // If we've listened for a request, then handle the request.
+            //log.info("Listening for a fighting request...");
+            if (!messageBus.query(MessageID.REQUEST_FIGHTING)) {
+                // Break-out and block everything else until recieving a 
+                // request.
+                //log.info("No skilling request! Blocking...");
+                currState = "Waiting for instructions";
+                return;
+            } else {
+                //log.info("Handling instructions...");
+                handleInstructions();
+            }
+        }
+
+        /* Entry: */
+        log.info("Fighter is not being blocked!");
+
         if (timeout > 0) {
             timeout--;
             log.info("Timeout: {}", timeout);
             return;
         }
 
-        log.info("Game tick observed. Queue size before any operation: {}", lootQueue.size());
+        // Block all actions behind a random delay.
+        //if (tickDelay-- > 0) {
+        //    log.info("Delaying actions: {}", tickDelay);
+        //    return;
+        //}
+
+        /* Proceed with core actions after random delay: */
 
         Action.checkRunEnergy(client);
-
-        // Wrap the entire main run loop in a tick delay.
-        if (tickDelay-- <= 0) {
-            tickDelay = config.tickDelay();
-            return;
-        }
 
         //log.info("TaskManager has tasks!");
         for (AbstractTask t : taskManager.getTasks()) {
@@ -189,7 +222,11 @@ public class FighterPlugin extends Plugin {
                 continue;
             }
         }
-        log.info("Game tick processing completed. Queue size after operations: {}", lootQueue.size());
+
+        //log.info("Game tick processing completed. Queue size after operations: {}", lootQueue.size());
+
+        // Reset random delay to block actions again.
+        tickDelay = RandomUtil.randTicks();
     }
 
     @Subscribe
@@ -260,12 +297,44 @@ public class FighterPlugin extends Plugin {
         GameState gameState = event.getGameState();
 
         switch (gameState) {
+            // hard stop gamestates
             case CONNECTION_LOST:
+            case LOGGING_IN: // xxx maybe
             case LOGIN_SCREEN:
             case LOGIN_SCREEN_AUTHENTICATOR:
+            case STARTING:
+            case UNKNOWN: // xxx watch this
                 stopPlugin(this);
                 break;
-            default: //
+            // pause game states
+            case HOPPING:
+                // xxx pause?
+                break;
+            case LOGGED_IN:
+            case LOADING:
+                // normal run
+                break;
+            default: // normal run
+                log.info("GameState case not handled, run by default: " + gameState);
+                break;
+        }
+    }
+
+    private void handleInstructions()
+    {
+        if (msg == null) {
+            msg = (Message<MessageID, Pair<Skill, Integer>>)
+                messageBus.get(MessageID.REQUEST_FIGHTING);
+            pair = (Pair<Skill, Integer>) msg.getData();
+        } else if (!Action.checkLevelUp(client, pair.getLeft(),
+                                                pair.getRight())) {
+            log.info("Done fighting! Releasing control...");
+            messageBus.send(new Message<MessageID, Boolean>(
+                MessageID.DONE_FIGHTING, true));
+
+            // cleanup
+            msg = null;
+            pair = null;
         }
     }
 }

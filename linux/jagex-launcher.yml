@@ -9,9 +9,9 @@ script:
     - installer: https://github.com/TormStorm/jagex-launcher-linux/releases/download/v1.0.1/installer.py
     - requirements: https://github.com/TormStorm/jagex-launcher-linux/releases/download/v1.0.1/requirements.txt
     - runelite: https://github.com/runelite/launcher/releases/download/2.7.1/RuneLite.jar
-    - runelite-launcher: $HOME/PiggyPlugins/runelite.sh
-    - runelite-hijack: https://github.com/Ethan-Vann/Installer/releases/download/1.0/RuneliteHijack.jar
-    - piggy-plugins:  https://github.com/0Hutch/PiggyPlugins/releases/download/release/piggy-plugins-aio-1.2.7.jar 
+    - runelite-launcher: $HOME/runelite.sh
+    #- runelite-hijack: https://github.com/Ethan-Vann/Installer/releases/download/1.0/RuneliteHijack.jar
+    #- piggy-plugins:  https://github.com/0Hutch/PiggyPlugins/releases/download/release/piggy-plugins-aio-1.2.7.jar 
   require-binaries: python3
   game:
     exe: $GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/JagexLauncher.exe
@@ -59,21 +59,21 @@ script:
     - execute:
         command: mkdir -p "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/"
         description: Creating game directory
-    - merge:
-        src: runelite-hijack
-        dst: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite"
+    #- merge:
+    #    src: runelite-hijack
+    #    dst: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite"
     - merge:
         src: runelite
         dst: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite"
     - chmodx: runelite
     - merge:
         src: runelite-launcher
-        dst: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite"
+        dst: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite/runelite.sh"
     - chmodx: "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite/runelite.sh"
     - execute:
         command: ln -s "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite/runelite.sh" "$GAMEDIR/drive_c/Program Files (x86)/Jagex Launcher/Games/RuneLite/RuneLite.exe"
-    - execute:
-        command: mkdir -p $HOME/.runelite/externalplugins
-    - merge:
-        src: piggy-plugins
-        dst: $HOME/.runelite/externalplugins
+    #- execute:
+    #    command: mkdir -p $HOME/.runelite/externalplugins
+    #- merge:
+    #    src: piggy-plugins
+    #    dst: $HOME/.runelite/externalplugins

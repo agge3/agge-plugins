@@ -6,19 +6,22 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
-
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Iterator;
 
 @Slf4j
 public class MessageBus {
     private static MessageBus instance;
     private ConcurrentHashMap<MessageID, Message<MessageID, ?>> messages;
     private ScheduledExecutorService scheduler;
+    private static final AtomicInteger referenceCount = new AtomicInteger(0);
 
     /**
      * MessageBus is a singleton, protected to throw a compiler error if an
@@ -49,6 +52,7 @@ public class MessageBus {
             log.info("No MessageBus instance, creating instance...");
             instance = new MessageBus();
         }
+        referenceCount.incrementAndGet();
         return instance;
     }
    
@@ -100,7 +104,36 @@ public class MessageBus {
         //log.info("Recieved query request for Message with ID: " + id);
         if (this.messages.isEmpty())
             return false;
+        //log.info("Amount of Messages on the MessageBus: " + messages.size());
         return this.messages.get(id) != null;
+    }
+
+    /**
+     * Get the amount of Messages on the MessageBus.
+     * Useful for debugging.
+     *
+     * @return int size, the amount of Messages on the MessageBus.
+     */
+    public synchronized int size()
+    {
+        return this.messages.size();
+    }
+
+    /**
+     * Get a Message if it's on the MessageBus.
+     *
+     * @param Message id
+     * The ID of the Message to get.
+     *
+     * @return Message<MessageID, ?> msg
+     * The Message to get, or null if the Message is not on the MessageBus
+     * (advised to query() first)
+     *
+     * @remark Does not remove!
+     */
+    public synchronized Message<MessageID, ?> get(MessageID id)
+    {
+        return this.messages.get(id);
     }
 
     /**
@@ -157,12 +190,36 @@ public class MessageBus {
     }
 
     /**
+     * Clears all Messages EXCEPT the MessageIDs provided.
+     * Useful for MessageBus adminstrators to control the overall state of the
+     * MessageBus, and clear all Messages except what they want to control.
+     *
+     * @param MessageID id, the MessageID that shouldn't be cleared
+     */
+    public synchronized void clearExcept(MessageID... ids) 
+    {
+        Set<MessageID> idSet = new HashSet<>(Arrays.asList(ids));
+
+        Iterator<Map.Entry<MessageID, Message<MessageID, ?>>> iterator = 
+            messages.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<MessageID, Message<MessageID, ?>> entry = iterator.next();
+            if (!idSet.contains(entry.getKey())) {
+                log.info("Removed: " + entry.getKey());
+                iterator.remove();
+            }
+        }
+    }
+
+    /**
      * Shutdown procedure.
      *
      * @remark Make sure to shutdown the MessageBus on its last instance, for a
      * clean shutdown.
+     *
+     * @warning Dangerous procedure, can lose Messages!
      */
-    public void shutdown()
+    public synchronized void shutdown()
     {
         log.info("Recieved shutdown request");
         this.scheduler.shutdown();
@@ -173,6 +230,20 @@ public class MessageBus {
         } catch (InterruptedException e) {
             this.scheduler.shutdownNow();
             Thread.currentThread().interrupt();
+        }
+        if (messages != null) {
+            messages.clear();
+        }
+        log.info("MessageBus resources have been cleaned up.");
+    }
+
+    // Release the instance of the MessageBus.
+    public synchronized void release() 
+    {
+        if (referenceCount.decrementAndGet() == 0) {
+            log.info("No more references to MessageBus, cleaning up...");
+            instance.shutdown();
+            instance = null;
         }
     }
 }

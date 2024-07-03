@@ -16,22 +16,18 @@ package com.aggeplugins.AutoQuester;
 import com.aggeplugins.AutoQuester.*;
 import com.aggeplugins.lib.*;
 import com.aggeplugins.MessageBus.*;
+import com.aggeplugins.Skiller.SkillerPlugin;
+import com.aggeplugins.Fighter.FighterPlugin;
 
-import com.piggyplugins.PiggyUtils.API.PlayerUtil;
+import com.piggyplugins.PiggyUtils.API.*;
+import com.piggyplugins.PiggyUtils.*;
 import com.example.Packets.*;
-import com.example.EthanApiPlugin.Collections.ETileItem;
-import com.example.EthanApiPlugin.Collections.Inventory;
-import com.example.EthanApiPlugin.Collections.NPCs;
-import com.example.EthanApiPlugin.Collections.TileItems;
-import com.example.EthanApiPlugin.Collections.query.TileItemQuery;
-import com.example.EthanApiPlugin.EthanApiPlugin;
-import com.example.InteractionApi.InventoryInteraction;
-import com.example.EthanApiPlugin.Collections.Widgets;
-import com.example.InteractionApi.NPCInteraction;
-import com.example.InteractionApi.ShopInteraction;
-import com.example.InteractionApi.InventoryInteraction;
-import com.example.InteractionApi.TileObjectInteraction;
-import com.example.PacketUtils.WidgetInfoExtended;
+import com.example.EthanApiPlugin.Collections.query.*;
+import com.example.EthanApiPlugin.*;
+import com.example.EthanApiPlugin.Collections.*;
+import com.example.InteractionApi.*;
+import com.example.PacketUtils.*;
+import static com.example.EthanApiPlugin.EthanApiPlugin.stopPlugin;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -52,12 +48,17 @@ import net.runelite.client.util.HotkeyListener;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.Client;
 import net.runelite.client.RuneLite;
+import net.runelite.api.Skill;
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.api.events.GameStateChanged;
 
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @PluginDescriptor(
         name = "<html><font color=\"#73D216\">[A3]</font> AutoQuester</html>",
@@ -72,6 +73,10 @@ public class AutoQuesterPlugin extends Plugin {
     public PlayerUtil playerUtil;
     @Inject
     public ConfigManager configManager;
+    @Inject
+    public ItemManager itemManager;
+    @Inject
+    public PluginManager pluginManager;
 
     @Inject
     private Client client;
@@ -87,13 +92,16 @@ public class AutoQuesterPlugin extends Plugin {
     private KeyManager keyManager;
     @Inject
     private OverlayManager overlayManager;
-    @Inject
-    public ItemManager itemManager;
-    @Inject
-    private Util util;
 
+    // Public instance variables.
     public MessageBus messageBus;
     public Message<MessageID, ?> msg;
+    public static WorldPoint GOAL;
+    public Player player;
+    public boolean started;
+    public int timeout;
+    public int idleTicks;
+    public Logger logger;
 
     @Provides
     private AutoQuesterConfig getConfig(ConfigManager configManager) {
@@ -108,7 +116,7 @@ public class AutoQuesterPlugin extends Plugin {
         overlayManager.add(overlay);
         overlayManager.add(tileOverlay);
         
-        init();
+        this.init();
     }
  
     @Override  
@@ -119,7 +127,7 @@ public class AutoQuesterPlugin extends Plugin {
         overlayManager.remove(overlay);
         overlayManager.remove(tileOverlay);
 
-        this.finalizer();
+        this.finalize();
     }
 
     // Entry, game logic:
@@ -128,36 +136,32 @@ public class AutoQuesterPlugin extends Plugin {
         if (!isStarted())
             return;
 
-        if (playerUtil.isInteracting() || player.getAnimation() == -1)
-            idleTicks++;
-        else
-            idleTicks = 0;
-
+        //if (playerUtil.isInteracting() || player.getAnimation() == -1)
+        //    idleTicks++;
+        //else
+        //    idleTicks = 0;
+        
         Action.checkRunEnergy(client);
 
         instructions.executeInstructions();
             
         // logging
         //log.info("Idle ticks: " + action.getTicks());
-        log.info("Curr idx: " + instructions.getIdx());
-        log.info("Size: " + instructions.getSize());
-        log.info("Curr WorldPoint: " + player.getWorldLocation()); 
+        //log.info("Curr idx: " + instructions.getIdx());
+        //log.info("Size: " + instructions.getSize());
+        //log.info("Curr WorldPoint: " + player.getWorldLocation()); 
     }
 
     @Subscribe
-    public void onStatChanged(StatChanged event) {
-        if (!started) 
-            return;
-    }
-
-    @Subscribe
-    public void onChatMessage(ChatMessage event) {
+    public void onChatMessage(ChatMessage e) 
+    {
         if (!started)
             return;
     }
 
     @Subscribe
-    public void onVarbitChanged(VarbitChanged event) {
+    public void onVarbitChanged(VarbitChanged event) 
+    {
         if (!started) 
             return;
         int bid = event.getVarbitId();
@@ -171,15 +175,6 @@ public class AutoQuesterPlugin extends Plugin {
             return;
     }
 
-    @Subscribe
-    public void onGameStateChanged(GameStateChanged event) {
-        GameState state = event.getGameState();
-        if (state == GameState.HOPPING || state == GameState.LOGGED_IN)
-            return;
-        // xxx handle stop differently
-        //EthanApiPlugin.stopPlugin(this);
-    }
-
     /**
      * Get the current instruction's name.
      * @return String, the current instruction's name or no instructions
@@ -188,17 +183,19 @@ public class AutoQuesterPlugin extends Plugin {
      */
     public String getInstructionName()
     {
-        if (instructions.getSize() == 0)
-            return "No instructions!";
-        return instructions.getName();
+        //try {
+            if (instructions.getSize() == 0)
+                return "No instructions!";
+            return instructions.getName();
+        //} catch (NullPointerException e) {
+        //    return "Instructions not intialized!";
+        //}
     }
 
-    // Public instance variables.
-    public static WorldPoint GOAL = null;
-    public Player player = null;
-    public boolean started = false;
-    public int timeout = 0;
-    public int idleTicks = 0;
+    public int getInstructionsSize()
+    {
+        return instructions.getSize();
+    }
 
     private void init()
     {
@@ -206,29 +203,34 @@ public class AutoQuesterPlugin extends Plugin {
         // of moving pieces.
         initClient();
         initInstance();
-        initConfig();
-        try {
-            this.ctx = new AutoQuesterContext(this, config, client, 
-                                              clientThread, _cfg, instructions);
-        } catch (NullPointerException e) {
-            log.info("Error: Could not create plugin Context, objects not initialized correctly");
-        }
-        //pathing = new Pathing(_ctx);
-
         initRegistry();
+        initLogging();
 
+        // Stop all plugins that AccountBuilder might use, it will control them
+        // if it's on.
+        // xxx stop all plugins, and only start desired
+        //pluginManager.stopPlugin(SkillerPlugin);
+        //pluginManager.stopPlugin(FighterPlugin);
+
+        // Send a Message that other plugins should be listening for 
+        // INSTRUCTIONS
         messageBus.send(new Message<MessageID, Boolean>(
             MessageID.INSTRUCTIONS, true));
     }
 
+    private void initLogging()
+    {
+        this.logger = new Logger(client);
+    }
+
     private void initClient()
     {   
-        try {
+        //try {
             this.client = RuneLite.getInjector().getInstance(Client.class);
             this.player = client.getLocalPlayer();
-        } catch (NullPointerException e) {
-            log.info("Error: Unable to get client instance variables");
-        }
+        //} catch (NullPointerException e) {
+        //    log.info("Error: Unable to get client instance variables");
+        //}
     }
 
     private void initInstance()
@@ -236,137 +238,81 @@ public class AutoQuesterPlugin extends Plugin {
         // Get an instance of the MessageBus.
         this.messageBus = messageBus.instance();
 
-        // Instantiate objects that need clean state.
+        // Instantiate object(s) that need clean state.
         this.instructions = new Instructions();
 
-        //if (pathing == null) {
-        //    log.error("Pathing is not initialized properly");
-        //    throw new IllegalStateException(
-        //        "Pathing is not initialized properly");
-        //}
-        if (this.instructions == null) {
+        if (instructions == null) {
             log.error("Instructions is not initialized properly");
             throw new IllegalStateException(
                 "Instructions is not initialized properly");
         }
-        //if (action == null) {
-        //    log.error("Action is not initialized properly");
-        //    throw new IllegalStateException(
-        //        "Action is not initialized properly");
+
+        // Instantiate Context.
+        //try {
+            this.ctx = new AutoQuesterContext(this, config, client, 
+                                              clientThread, instructions);
+        //} catch (NullPointerException e) {
+        //    log.info("Error: Could not create plugin Context, objects not initialized correctly");
         //}
-    }
-
-
-    private void initConfig()
-    {
-        _cfg = new HashMap<>();
-        try {
-            if (config.testInstructions()) {
-                _cfg.put("Test instructions", true);
-            } else {
-                _cfg.put("Test instructions", false);
-            }
-            if (config.xMarksTheSpot()) {
-                _cfg.put("X Marks the Spot", true);
-            } else {
-                _cfg.put("X Marks the Spot", false);
-            }
-            if (config.startedXMarksTheSpot()) {
-                _cfg.put("Started X Marks the Spot", true);
-            } else {
-                _cfg.put("Started X Marks the Spot", false);
-            }
-            if (config.sheepShearer()) {
-                _cfg.put("Sheep Shearer", true);
-            } else {
-                _cfg.put("Sheep Shearer", false);
-            }
-            if (config.startedSheepShearer()) {
-                _cfg.put("Started Sheep Shearer", true);
-            } else {
-                _cfg.put("Started Sheep Shearer", false);
-            }
-            if (config.cooksAssistant()) {
-                _cfg.put("Cook's Assistant", true);
-            } else {
-                _cfg.put("Cook's Assistant", false);
-            }
-            if (config.startedCooksAssistant()) {
-                _cfg.put("Started Cook's Assistant", true);
-            } else {
-                _cfg.put("Started Cook's Assistant", false);
-            }
-            if (config.runeMysteries()) {
-                _cfg.put("Rune Mysteries", true);
-            } else {
-                _cfg.put("Rune Mysteries", false);
-            }
-            if (config.startedRuneMysteries()) {
-                _cfg.put("Started Rune Mysteries", true);
-            } else {
-                _cfg.put("Started Rune Mysteries", false);
-            }
-            if (config.romeoAndJuliet()) {
-                _cfg.put("Romeo and Juliet", true);
-            } else {
-                _cfg.put("Romeo and Juliet", false);
-            }
-            if (config.startedRomeoAndJuliet()) {
-                _cfg.put("Started Romeo and Juliet", true);
-            } else {
-                _cfg.put("Started Romeo and Juliet", false);
-            }
-            if (config.theRestlessGhost()) {
-                _cfg.put("The Restless Ghost", true);
-            } else {
-                _cfg.put("The Restless Ghost", false);
-            }
-            if (config.startedTheRestlessGhost()) {
-                _cfg.put("Started The Restless Ghost", true);
-            } else {
-                _cfg.put("Started The Restless Ghost", false);
-            }
-        } catch (NullPointerException e) {
-            log.info("Error: Unable to process configuration");
-        }
+    
+        // Lastly, instantiate public instance variables.
+        GOAL = null;
+        started = true;
+        timeout = 0;
+        idleTicks = 0;
+        msg = null;
     }
 
     private void initRegistry()
     {
         // Context guaranteed, SAFE to proceed to Instructions Registry.
-        Registry registry = new Registry(ctx);
-        try {
-            if (_cfg.get("Test instructions")) {
+        this.registry = new Registry(ctx);
+            
+        //try {
+            // Test instructions.
+            if (config.testInstructions()) {
                 registry.testInstructions();
                 log.info("Registered instructions: Test instructions");
             }
-            if (_cfg.get("X Marks the Spot")) {
+
+            // Control other plugins.
+            if (config.bronzeInstructions())
+                registry.bronzeInstructions();
+            if (config.mithrilInstructions())
+                registry.mithrilInstructions();
+            if (config.adamantInstructions())
+                registry.adamantInstructions();
+            if (config.runeInstructions())
+                registry.runeInstructions();
+
+            // Do quests.
+            if (config.xMarksTheSpot()) {
                 registry.xMarksTheSpot();
                 log.info("Registered instructions: X Marks the Spot");
             }
-            if (_cfg.get("Sheep Shearer")) {
+            if (config.sheepShearer()) {
                 registry.sheepShearer();
                 log.info("Registered instructions: Sheep Shearer");
             }
-            if (_cfg.get("Cook's Assistant")) {
+            if (config.cooksAssistant()) {
                 registry.cooksAssistant();
                 log.info("Registered instructions: Cook's Assistant");
             }
-            if (_cfg.get("Rune Mysteries")) {
+            if (config.runeMysteries()) {
                 registry.runeMysteries();
                 log.info("Registered instructions: Rune Mysteries");
             }
-            if (_cfg.get("Romeo and Juliet")) {
+            if (config.romeoAndJuliet()) {
                 registry.romeoAndJuliet();
                 log.info("Registered instructions: Romeo and Juliet");
             }
-            if (_cfg.get("The Restless Ghost")) {
+            if (config.theRestlessGhost()) {
                 registry.theRestlessGhost();
                 log.info("Registered instructions: The Restless Ghost");
             }
-        } catch (NullPointerException e) {
-            log.info("Error: Unable to register instructions");
-        }
+        //} catch (NullPointerException e) {
+        //    log.info("Error: Unable to register instructions");
+        //}
     }
 
     /*
@@ -375,16 +321,25 @@ public class AutoQuesterPlugin extends Plugin {
      */
     private void registerBare()
     {
-        try {
+        //try {
           registry.xMarksTheSpot();
           registry.sheepShearer();
           registry.cooksAssistant();
-        } catch (NullPointerException e) {
-          log.debug("Bare Registry failed!");
-        }
+        //} catch (NullPointerException e) {
+        //  log.debug("Bare Registry failed!");
+        //}
     }
 
-    private void finalizer()
+    @Subscribe
+    protected void onStatChanged(StatChanged e)
+    {
+        if (!started) 
+            return;
+        logger.addExp(e.getSkill(), e.getXp());
+    }
+
+    @Override
+    public void finalize()
     {
         this.started = false;
 
@@ -392,17 +347,21 @@ public class AutoQuesterPlugin extends Plugin {
         this.client = null;
         this.player = null;
 
-        // Release resources for everything and hope garbage collector claims 
-        // them.
+        /* Release resources for everything and hope garbage collector claims 
+         * them: */
         // Instructions should be cleared. @see class Instructions
         this.instructions.clear();
         this.instructions = null;
-        // SAFE to release Context and Registry.
+
+        // SAFE to release Context.
         this.ctx = null;
+
+        // SAFE to finalize and release Registry.
+        this.registry.finalize();
         this.registry = null;
 
-        // Remove the INSTRUCTIONS Message from the MessageBus, other plugins 
-        // are no longer listening for instructions. null the reference
+        // Remove the INSTRUCTIONS Message from the MessageBus; other plugins 
+        // are no longer listening for instructions. null the reference.
         messageBus.remove(MessageID.INSTRUCTIONS);
         messageBus = null;
         msg = null; // in case it wasn't
@@ -445,25 +404,38 @@ public class AutoQuesterPlugin extends Plugin {
         }
     }
 
-    // Wrapper to return boolean for player.getAnimation()
-    //private void isAnimating() {
-    //    if (player.getAnimation() == -1)
-    //        return true;
-    //    return false;
-    //}
+    @Subscribe
+    private void onGameStateChanged(GameStateChanged event)
+    {
+        GameState gameState = event.getGameState();
 
-    // Different random for all instances, more diverse seeds!
-    //private Random _rand;
+        switch (gameState) {
+            // hard stop gamestates
+            case CONNECTION_LOST:
+            case LOGGING_IN: // xxx maybe
+            case LOGIN_SCREEN:
+            case LOGIN_SCREEN_AUTHENTICATOR:
+            case STARTING:
+            case UNKNOWN: // xxx watch this
+                stopPlugin(this);
+                break;
+            // pause game states
+            case HOPPING:
+                // xxx pause?
+                break;
+            case LOGGED_IN:
+            case LOADING:
+                // normal run
+                break;
+            default: // normal run
+                log.info("GameState case not handled, run by default: " + gameState);
+                break;
+        }
+    }
 
     // Create null reference pointers for needed utilities.
     private Instructions instructions;
     private AutoQuesterContext ctx;
     private Registry registry;
-
-    // Local config. Guarantee that every pointer points to this memory address.
-    private Map<String, Boolean> _cfg;
-
-    // k, v for needed locations. xxx not needed!
-    private WorldPoint shopkeeper = new WorldPoint(3212, 3246, 0);
-    private WorldPoint veos = new WorldPoint(3228, 3242, 0);
+    //private Util util;
 }

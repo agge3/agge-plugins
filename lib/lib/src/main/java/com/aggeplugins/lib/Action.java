@@ -30,6 +30,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.Skill;
 
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -48,6 +49,51 @@ public class Action {
     {
         log.info("Constructing Action!");
         _ticks = 0;
+    }
+
+    public static boolean interactBank()
+    {
+        Widget<Optional> bank = TileObjects.search()
+                                           .withAction("Bank")
+                                           .first();
+        if (bank.isPresent()) {
+            log.info("Bank found");
+            TileObjectInteraction.interact(bank.get(), "Bank");
+            return true;
+        }
+
+        bank = TileObjects.search().withName("Bank chest").first();
+        if (bank.isPresent()) {
+            log.info("Bank found");
+            TileObjectInteraction.interact(bank.get(), "Bank");
+            return true;
+        }
+
+        bank = NPCs.search().withAction("Bank").first();
+        if (bank.isPresent()) {
+            log.info("Bank NPC found");
+            NPCInteraction.interact(bank.get(), "Bank");
+            return true;
+        }
+
+        return false;
+    }
+
+    //public static boolean checkGameState(GameStateChanged e)
+    //{
+    //}
+    
+    public static boolean checkForEquipment(List<Integer> equipment)
+    {
+    //    // Because of how Actions are designed to be a "one-tap" boolean in a
+    //    // game tick, we need to guard our initialization to only be seen once.
+    //    if (!init) {
+    //        Iterator<Integer> it = equipment.iterator();
+    //        Iterator<EquipmentSlotIterator> slotIt = 
+    //            new EqiupmentSlotIterator();
+    //    }
+
+        return true;
     }
 
     public static boolean continueDialogue() {
@@ -204,14 +250,24 @@ public class Action {
         return false;
     }   
 
+    /**
+     * @note The check range is between 30-50, it doesn't start until 30 to
+     * avoid activiating too often.
+     */
     public static void checkRunEnergy(Client client) 
     {
         Random rand = new Random();
+         // random 30-50
         if (client.getVarpValue(173) == 0 && 
-            client.getEnergy() >= rand.nextInt(50) * 100) { // random 0-50
+            client.getEnergy() >= (30 + rand.nextInt(21)) * 100) {            
             MousePackets.queueClickPacket();
             WidgetPackets.queueWidgetActionPacket(1, 10485787, -1, -1);
         }
+    }
+
+    public static boolean checkLevelUp(Client client, Skill skill, int level)
+    {
+        return client.getRealSkillLevel(skill) < level;
     }
 
     public static boolean isInteractingNPC(Client client)
@@ -245,6 +301,12 @@ public class Action {
                                                     .empty() &&
                !TileItems.search().nameContains(name).withinDistance(10)
                                                      .empty();
+    }
+
+    public static boolean isAtLocation(Client client, WorldPoint wp)
+    {   
+        return !EthanApiPlugin.isMoving() && 
+               client.getLocalPlayer().getWorldLocation().equals(wp);
     }
 
     //public static void setMax(int max)
