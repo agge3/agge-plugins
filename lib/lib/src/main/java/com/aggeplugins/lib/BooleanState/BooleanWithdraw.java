@@ -68,7 +68,7 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
         WIDGET(true),
         MENU(true),
         NONE(true);
-        
+
         Type(boolean noted)     { this.noted = noted; }
         boolean getNoted()      { return noted; }
 
@@ -91,17 +91,19 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
             return Type.WIDGET;
             break;
         }
+
+
     }
 
     /**
-     * Deposit all items (except excluded) and withdraw items specified in 
+     * Deposit all items (except excluded) and withdraw items specified in
      * BooleanBankingState's constructor.
      *
-     * @remark Pass null to BooleanBankingState's constructor to only deposit 
+     * @remark Pass null to BooleanBankingState's constructor to only deposit
      * items.
      */
     @Override
-    public boolean run() 
+    public boolean run()
     {
         // State 1: Interacting with bank.
         if (!inBank()) {
@@ -117,7 +119,7 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
 
         // State 3: Withdraw desired items.
         Iterator<Integer> i = bankItems.iterator();
-        Iterator<Integer> j = bankAmt.iterator();
+        Iterator<String> j = bankAmt.iterator();
         if (i.hasNext()) {
             Integer item = i.next();
             String action = "Withdraw-All";
@@ -132,16 +134,16 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
                         int intAmt = Integer.parseInt(amt);
                         Widget widget = bankWidget(item);
                         if (widget != null) {
-                            BankInteraction.withdrawX(widget, intAmt, 
-                                                      type.getNoted());
+							// xxx ethan's withdrawX(widget, int);
+                            BankInteraction.withdrawX(widget, intAmt);
                         } else {
                             i.remove();
                         }
                     } else {
                         Widget widget = bankWidget(item);
                         if (widget != null) {
-                            BankInteraction.useItem(widget, type.getNoted(), 
-                                                    action);
+							// xxx ethan's useItem(widget, boolean, string)
+                            BankInteraction.useItem(widget, action);
                         } else {
                             i.remove();
                         }
@@ -174,10 +176,11 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
 
     private Widget bankWidget(int item)
     {
-        Widget<Optional> widget = Bank.search().withId(item).first();
-        if (widget.isPresent())
+        Optional<Widget> widget = Bank.search().withId(item).first();
+        if (widget.isPresent()) {
             return widget.get();
-        
+		}
+
         return null;
     }
 
@@ -195,7 +198,7 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
     //        .ifPresent(npc -> {
     //            found.set(true);
     //            NPCInteraction.interact(npc, "Bank");
-    //    }); 
+    //    });
     //    return found.get();
     //}
 
@@ -205,7 +208,7 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
         return !Widgets.search().withId(786445).first().isEmpty();
     }
 
-    private boolean pin()    
+    private boolean pin()
     {
         if (Widgets.search().withId(13959169).first().isPresent()) {
             log.info("Unable to continue: Bank pin");

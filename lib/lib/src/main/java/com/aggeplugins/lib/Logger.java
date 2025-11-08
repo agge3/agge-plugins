@@ -20,6 +20,8 @@ public class Logger {
     @Inject
     private ItemManager itemManager;
 
+	private Client client;
+
     public Logger(Client client)
     {
         this.init();
@@ -41,7 +43,7 @@ public class Logger {
         // Construct a new loot price cache.
         lootCache = new HashMap<>();
         Loot loot = new Loot();
-    
+
         time = Instant.now();
 
         count = 0;
@@ -128,7 +130,7 @@ public class Logger {
      * @param name Exact name of item
      * @return
      */
-    private int getLootPrice(String name) 
+    private int getLootPrice(String name)
     {
         if (lootCache.containsKey(name)) {
             return lootCache.get(name);
