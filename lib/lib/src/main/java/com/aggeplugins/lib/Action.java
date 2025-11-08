@@ -54,25 +54,27 @@ public class Action {
     public static boolean interactBank()
     {
         Optional<TileObject> bank = TileObjects.search()
-                                           .withAction("Bank")
-                                           .first();
+                                               .withAction("Bank")
+                                               .first();
+
+
         if (bank.isPresent()) {
             log.info("Bank found");
-            TileObjectInteraction.interact(bank.get(), "Bank");
+            TileObjectInteraction.interact(bank.get().getId(), "Bank");
             return true;
         }
 
         bank = TileObjects.search().withName("Bank chest").first();
         if (bank.isPresent()) {
             log.info("Bank found");
-            TileObjectInteraction.interact(bank.get(), "Bank");
+            TileObjectInteraction.interact(bank.get().getId(), "Bank");
             return true;
         }
 
         Optional<NPC> bankNpc = NPCs.search().withAction("Bank").first();
         if (bank.isPresent()) {
             log.info("Bank NPC found");
-            NPCInteraction.interact(bank.get(), "Bank");
+            NPCInteraction.interact(bankNpc.get().getId(), "Bank");
             return true;
         }
 

@@ -78,21 +78,16 @@ public class BooleanWithdraw<T> extends BooleanState<T> {
     private Type withdraw(String amt)
     {
         switch(amt) {
-        case "1":
-            return Type.ONE;
-            break;
-        case "5":
-        case "10":
-        case "All":
-        case "All-but-1":
-            return Type.MENU;
-            break;
-        default:
-            return Type.WIDGET;
-            break;
+        	case "1":
+        	    return Type.ONE;
+        	case "5":
+        	case "10":
+        	case "All":
+        	case "All-but-1":
+        	    return Type.MENU;
+        	default:
+        	    return Type.WIDGET;
         }
-
-
     }
 
     /**
