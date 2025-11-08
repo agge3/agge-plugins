@@ -1,7 +1,7 @@
 /**
  * @file Instructions.java
  * @class Instructions
- * Provides functionality to register, execute, and clear boolean instructions. 
+ * Provides functionality to register, execute, and clear boolean instructions.
  *
  * @author agge3
  * @version 1.0
@@ -55,18 +55,18 @@ public class Instructions {
      */
     public boolean execute()
     {
-        if (_idx < _instructions.size() && 
+        if (_idx < _instructions.size() &&
             _instructions.get(_idx).getAsBoolean()) {
             _instructions.remove(_idx);
             _names.remove(_idx);
-            // Do not increment index since the current index is now pointing 
+            // Do not increment index since the current index is now pointing
             // to the next instruction.
             return true;
         }
         return false;
     }
 
-    /** 
+    /**
      * Executes all registered instructions.
      * @return TRUE if all instructions executed, FALSE if still executing
      */
@@ -74,7 +74,7 @@ public class Instructions {
     {
         // Execute the current instruction.
         boolean executed = execute();
-        // Check if there are more instructions left after executing the current 
+        // Check if there are more instructions left after executing the current
         // one.
         return executed && _idx >= _instructions.size();
     }
@@ -89,8 +89,8 @@ public class Instructions {
      * @param Optional<Integer> n
      * Add n instructions. RECOMMENDED: Seed Random.
      */
-    public void register(BooleanSupplier instruction, String name, 
-            Optional<Integer> n) 
+    public void register(BooleanSupplier instruction, String name,
+            Optional<Integer> n)
     {
         if (!n.isPresent()) {
             _instructions.add(instruction);
@@ -111,7 +111,7 @@ public class Instructions {
      * @param String name
      * Provide a human-readable name for the instruction.
      */
-    public void register(BooleanSupplier instruction, String name) 
+    public void register(BooleanSupplier instruction, String name)
     {
         _instructions.add(instruction);
         _names.add(name);
@@ -169,7 +169,7 @@ public class Instructions {
      * Returns the size of the instruction list.
      * @return The size of the instruction list
      */
-    public int getSize() 
+    public int getSize()
     {
         return _instructions.size();
     }
@@ -178,7 +178,7 @@ public class Instructions {
      * Get the index of the executing instruction.
      * @return The current index
      */
-    public int getIdx() 
+    public int getIdx()
     {
         return _idx;
     }
@@ -186,7 +186,7 @@ public class Instructions {
     /**
      * Clears all instructions.
      */
-    public void clear() 
+    public void clear()
     {
         _instructions.clear();
         _names.clear();
@@ -224,7 +224,7 @@ public class Instructions {
      * Get the current instruction's WorldPoint goal.
      * @return WorldPoint wp
      * The instruction's WorldPoint goal.
-     * @todo UNIMPLEMENTED, requires changing the interface. Using a static 
+     * @todo UNIMPLEMENTED, requires changing the interface. Using a static
      * global instead.
      */
     //public WorldPoint getGoal()
@@ -233,7 +233,7 @@ public class Instructions {
     //}
 
     private List<BooleanSupplier> _instructions;
-    private List<String> _names; 
+    private List<String> _names;
     //private List<WorldPoint> _goals;
     private int _idx;
 }
