@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly project(":extern:PiggyPlugins:EthansApi")
+    compileOnly project(":extern:PacketUtils")
 }
 
 sourceSets {

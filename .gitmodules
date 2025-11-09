@@ -10,3 +10,9 @@
 [submodule "VitaLite"]
 	path = VitaLite
 	url = git@github.com:agge3/VitaLite.git
+[submodule "extern/PacketUtils"]
+	path = extern/PacketUtils
+	url = git@github.com:agge3/PacketUtils.git
+[submodule "extern/runelite-profiles"]
+	path = extern/runelite-profiles
+	url = git@github.com:Septharoth/runelite-profiles.git

@@ -36,7 +36,7 @@ allprojects {
 }
 
 dependencies {
-    implementation project(path: ':extern:PiggyPlugins:EthansApi')
+    implementation project(path: ':extern:PacketUtils')
     implementation project(path: ':lib:PiggyUtils')
     implementation project(path: ':src:AutoBoner')
     implementation project(path: ':src:AutoCombat')

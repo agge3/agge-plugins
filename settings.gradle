@@ -1,5 +1,6 @@
 rootProject.name = 'agge-plugins'
-include ':extern:PiggyPlugins:EthansApi'
+include ':extern:PacketUtils'
+//include ':extern:PiggyPlugins:EthansApi'
 include ':lib:PiggyUtils'
 include ':src:AutoBoner'
 include ':src:AutoCombat'
